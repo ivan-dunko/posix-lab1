@@ -9,37 +9,40 @@
 #define THREAD_MSG "routine\n"
 #define MAIN_MSG "main\n"
 
-void exitWithFailure(const char *msg){
+void exitWithFailure(const char *msg, int err){
+    errno = err;
     perror(msg);
     exit(EXIT_FAILURE);
 }
 
 void *routine(void *data){
-    for (int i = 0; i < PRINT_CNT; ++i)
-        if (write(STDIN_FILENO, THREAD_MSG, strlen(THREAD_MSG)) == -1)
-            exitWithFailure("routine");
+    for (int i = 0; i < PRINT_CNT; ++i){
+        int err = write(STDIN_FILENO, THREAD_MSG, strlen(THREAD_MSG));
+        if (err == -1)
+            exitWithFailure("routine", errno);
+    }
 
-	return NULL;
+    return NULL;
 }
 
 int main(int argc, char **argv){
     pthread_t pid;
 
-    if ((errno = pthread_create(&pid, NULL, routine, NULL) == -1)
-#ifndef LAB2
-        || (errno = pthread_detach(pid) == -1)
-#endif
-                                            )
-        exitWithFailure("main");
+    int err = pthread_create(&pid, NULL, routine, NULL);
+    if (err)
+        exitWithFailure("main", err);
 
-#ifdef LAB2
-    if (errno = pthread_join(pid, NULL) == -1)
-        exitWithFailure("main");
-#endif
-
-    for (int i = 0; i < PRINT_CNT; ++i)
-        if (write(STDIN_FILENO, MAIN_MSG, strlen(MAIN_MSG)) == -1)
-            exitWithFailure("main");
+    /*
+    err =  pthread_detach(pid);
+    if (err)
+        exitWithFailure("main", err);
+    */
+   
+    for (int i = 0; i < PRINT_CNT; ++i){
+        int err = write(STDIN_FILENO, MAIN_MSG, strlen(MAIN_MSG));
+        if (err == -1)
+            exitWithFailure("main", errno);
+    }
 
     pthread_exit((void*)(EXIT_SUCCESS));
 }
